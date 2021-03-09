@@ -626,7 +626,7 @@ public class DefaultView extends View {
         flyout2.addChild("Transducer", slider1);
         model.addObserver(slider1);
         
-        slider1 = new Slider(1250, 225, 410, 25, controller);
+        slider1 = new Slider(1250, 140, 410, 25, controller);
         slider1.setTitle("Frequency");
         slider1.setTag("frequencySlider");
         slider1.setCommand("sonicationFrequency"); // controller will set command name as propery on model
@@ -648,7 +648,7 @@ public class DefaultView extends View {
         slider1.setMinMax(0, 1);
         slider1.setLabelWidth(180);
         slider1.setFormatString("%1.2f");
-        slider1.setCurrentValue(0.5f);
+        slider1.setCurrentValue(1);
         flyout2.addChild("Transducer", slider1);
         model.addObserver(slider1);
         
@@ -737,7 +737,7 @@ public class DefaultView extends View {
         envelopeCalcButton.setTitle("Calc Envelope");
         envelopeCalcButton.setCommand("calcEnvelope");
         flyout2.addChild("Transducer", envelopeCalcButton);
-        
+      
         
         skullProfileChart = new XYChartControl(250, 10, 500, 250);
         flyout2.addChild("Transducer", skullProfileChart);
@@ -833,6 +833,8 @@ public class DefaultView extends View {
         slider1.setCurrentValue(400);
         flyout3.addChild("CT", slider1);
         model.addObserver(slider1);
+        
+        
         
 //                flyout2.addChild(new ImageLabel("images/3dmoveicon.png", 350, 50, 200, 200));
 //                flyout2.addChild(new ImageLabel("images/3drotateicon.png", 425, 50, 200, 200));
@@ -946,7 +948,14 @@ public class DefaultView extends View {
         button.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
         model.addObserver(button);
         flyout2.addChild("Preferences", button);
+
         
+        
+        // CJ: add pressure file save button
+        Button pressureFileSave = new Button(Button.ButtonType.BUTTON, 200, 225, 150, 25, this);
+        pressureFileSave.setTitle("Save Pressure file");
+        pressureFileSave.setCommand("pressureFileSave");
+        flyout2.addChild("Acoustics", pressureFileSave);
         
 //        // Model for Insightec "top hat" hydrophone skull mount
 //        ////////////
@@ -3321,6 +3330,12 @@ public class DefaultView extends View {
                         model.setAttribute("targetVisible", false);
                     }
                     break;
+                                
+//                // CJ : performed in update method
+//                case "pressureFileSave":
+//                    System.out.println("pressureFileSave was pushed- from update method");     
+//                    break;
+                
                 case "transducerXTilt":
                     this.transducerModel.setTransducerTilt((float)event.getNewValue(), this.transducerTiltY);
                     this.transducerTiltX = (float)event.getNewValue();
@@ -4389,6 +4404,21 @@ public class DefaultView extends View {
                     model.setAttribute("showPressure", !bDoPressure);
                 }
             }
+            
+            if (Keyboard.getEventKeyState()) {
+                if (Keyboard.getEventKey() == Keyboard.KEY_I) {
+                    
+                    try{
+                        pressureCalcNeedsUpdate = true;   
+                        pressureCalCalledByButton();    
+                    }
+                    catch(Exception e){
+                        pressureCalcNeedsUpdate = false; // maybe not necessary
+                    }
+                    System.out.println("Key_I was called");
+                }
+            } 
+            
 //            if (Keyboard.getEventKeyState()) {
 //                if (Keyboard.getEventKey() == Keyboard.KEY_K) {
 //                    controller.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "loadExport"));
@@ -4433,27 +4463,21 @@ public class DefaultView extends View {
     }
     
     public void pressureCalCalledByButton(){
+        
         transRayTracer.setShowEnvelope(false); // TODO: this is probably overtaken by events now. remove?
-        canvas.setShowPressure(true);
-        // updatePressureCalc();
-        
-        if (canvas.getShowPressure()) {
-            Vector3f CofR = new Vector3f(currentTarget.getXpos(), currentTarget.getYpos(), currentTarget.getZpos());
-            canvas.setTextureRotatation(CofR.translate(currentSteering.getXpos(), currentSteering.getYpos(), currentSteering.getZpos()), trackball);
-            this.transRayTracer.setTextureRotatation(CofR, trackball);
-//TODO: put back later
-//            this.transRayTracer.attenuation_term_on = attenuation_term_on;
-//            this.transRayTracer.transmissionLoss_term_on = transmissionLoss_term_on;
-//            
-//            this.transRayTracer.calcPressureEnvelope3D();
-            //  this.transRayTracer.calcPressureEnvelope();
-            canvas.setOverlayImage(transRayTracer.getEnvelopeImage());
+        canvas.setShowPressure(true);  
+        transRayTracer.setShowPressureEnvelope(true);   // true: hilbert transformed pressure envelop, false: raw pumpy pressure pattern
 
-            canvas1.setOverlayImage(transRayTracer.getEnvelopeImage());
-            canvas2.setOverlayImage(transRayTracer.getEnvelopeImage());
-            canvas3.setOverlayImage(transRayTracer.getEnvelopeImage());
-        }
+	transRayTracer.calcPressureEnvelopeAcoustic(new Quaternion(this.trackball.getCurrent()));
         
+	canvas.setOverlayImage(transRayTracer.getEnvelopeImage());
+
+	canvas1.setOverlayImage(null);
+	canvas2.setOverlayImage(null);
+	canvas3.setOverlayImage(null);
+        
+	pressureCalcNeedsUpdate = false;
+     
         System.out.println("pressure button pressed");
     }
  
@@ -4903,6 +4927,17 @@ public class DefaultView extends View {
             case "saveACTfileWS":
                 saveACTFileForWorkstation();
                 break;
+            
+               
+            // CJ : performed in action performed method
+            case "pressureFileSave":
+                
+                pressureCalcNeedsUpdate = true;
+                pressureCalCalledByButton();        
+                                    
+                System.out.println("pressureFileSave was pushed- from action performed");
+                break;
+                
             case "currentOverlayFrame":
                 Integer sonicationIndex = (Integer) model.getAttribute("currentSonication");
                 if (sonicationIndex == null) {

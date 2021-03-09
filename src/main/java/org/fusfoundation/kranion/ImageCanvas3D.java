@@ -1139,8 +1139,8 @@ private Vector3f setupLightPosition(Vector4f lightPosIn, ImageVolume image) {
             LookupTable lutToUse = thermometryLUT;
             
             if (doVolumeRender) {
-                shaderToUse = shader;
-                if (showThermometry ) {
+                shaderToUse = shader;  // <== vertex shader
+                 if (showThermometry ) {
                     if (this.showDose) {
                         //shaderToUse = this.thermometryDoseShader;
                         shaderToUse = thermometryShader;
@@ -1257,7 +1257,7 @@ private Vector3f setupLightPosition(Vector4f lightPosIn, ImageVolume image) {
                 glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             }
             
-             int startSlice = 500;
+            int startSlice = 500;
             // int startSlice = 250;
             int endSlice = fgVolSlices;
             
@@ -1771,7 +1771,7 @@ private Vector3f setupLightPosition(Vector4f lightPosIn, ImageVolume image) {
         Shader fragShader2D = new Shader();
         fragShader2D.addShaderSourceString(GL_FRAGMENT_SHADER, fsrc2D);
         
-        shader = new ShaderProgram();
+        shader = new ShaderProgram(); 
         shader.addShader(vertexShader);
         shader.addShader(fragShader);
         shader.compileShaderProgram();

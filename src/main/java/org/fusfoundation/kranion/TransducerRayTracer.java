@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.Observer;
 import javax.swing.JFileChooser;
 
+import javax.swing.*;
+
 import org.fusfoundation.kranion.model.image.ImageVolume;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.Display;
@@ -56,6 +58,9 @@ import org.lwjgl.util.vector.*;
 
 import org.fusfoundation.kranion.model.image.*;
 import org.fusfoundation.util.FastFourierTransform;
+
+import jnu.acoustic.OptionPaneCustom; 
+
 
 /**
  *
@@ -111,6 +116,8 @@ public class TransducerRayTracer extends Renderable implements Pickable {
     
     private boolean showPressureEnvelope = false; // show pressure waveform or envelope?
     private float phaseCorrectAmount = 1f; // to vary the amount of phase correction 0 to 1
+        
+    private String pressureData = "";
     
     // Observable pattern
     private List<Observer> observers = new ArrayList<Observer>();
@@ -1644,6 +1651,304 @@ public class TransducerRayTracer extends Renderable implements Pickable {
         return result;
     }
     
+    
+    public void calcPressureEnvelopeAcoustic(Quaternion pressureFieldOrientation) {
+            
+    // This method is a copy of method calcPressureEnvelope
+    // which invoked by new added button 
+        
+        if (CTimage == null) return;
+        
+        float voxelsize = 1f;
+
+        int volumeHalfWidthX = 15;
+        int volumeHalfWidthY = 15;
+        
+        int volumeHalfWidthZ = 0;
+        int volumeWidthX = 2*volumeHalfWidthX+1;
+        int volumeWidthY = 2*volumeHalfWidthY+1;
+        int volumeWidthZ = 2*volumeHalfWidthZ+1;
+        
+        if (envelopeImage != null) {
+            ImageVolumeUtil.releaseTextures(envelopeImage);
+        }
+            
+//        if (envelopeImage == null) {
+            
+            envelopeImage = new ImageVolume4D(ImageVolume.FLOAT_VOXEL, volumeWidthX, volumeWidthY, volumeWidthZ, 1);
+            envelopeImage.getDimension(0).setSampleWidth(voxelsize);
+            envelopeImage.getDimension(1).setSampleWidth(voxelsize);
+            envelopeImage.getDimension(2).setSampleWidth(1f);
+            
+            envelopeImage.getDimension(0).setSampleSpacing(voxelsize);
+            envelopeImage.getDimension(1).setSampleSpacing(voxelsize);
+            envelopeImage.getDimension(2).setSampleSpacing(1f);
+//        }
+        
+        Vector4f offset = new Vector4f();
+        
+        envelopeImage.setAttribute("ImageTranslation", new Vector3f(-centerOfRotation.x - steering.x, -centerOfRotation.y + steering.y, -centerOfRotation.z + steering.z));
+        if (pressureFieldOrientation == null) {
+            pressureFieldOrientation = new Quaternion();
+        }
+        
+        Quaternion r1 = new Quaternion();
+        r1.setFromAxisAngle(new Vector4f(1, 0, 0, 3.14159f)); // flip around the x-axis
+        Quaternion r2 = new Quaternion();
+        r2.setFromAxisAngle(new Vector4f(0, 1, 0, 3.14159f)); // flip around the y-axis
+ 
+        envelopeImage.setAttribute("ImageOrientationQ", pressureFieldOrientation);
+        
+        Quaternion tmpq = new Quaternion(pressureFieldOrientation);
+        
+        Quaternion rotX = new Quaternion();
+        rotX.setFromAxisAngle(new Vector4f(1, 0, 0, transducerTiltX/180f*(float)Math.PI));
+        Quaternion.mul(tmpq, rotX, tmpq);
+        
+        Quaternion rotY = new Quaternion();
+        rotY.setFromAxisAngle(new Vector4f(0, 1, 0, transducerTiltY/180f*(float)Math.PI));
+        Quaternion.mul(tmpq, rotY, tmpq);
+        
+        Matrix4f pfoMat = Trackball.toMatrix4f(tmpq.negate(null));
+        
+                
+        float[] voxels_org = (float[])envelopeImage.getData();
+        float[] voxels = (float[])envelopeImage.getData();
+        
+        this.colormap_min = Float.MAX_VALUE;
+        this.colormap_max = -Float.MAX_VALUE;
+                
+//        setupImageTexture(CTimage, 0, new Vector3f(centerOfRotation.x, centerOfRotation.y, centerOfRotation.z), new Vector4f(0f, 0f, 0f, 1f)/*offset*/);
+        setupImageTexture(CTimage, 0, centerOfRotation);
+
+        doCalc();
+        
+        glActiveTexture(GL_TEXTURE0 + 0);
+        glDisable(GL_TEXTURE_3D);
+                
+        pressureData = "";
+        int pressureSize = 0;
+        
+        
+        for (int i = -volumeHalfWidthX; i <= volumeHalfWidthX; i++) {
+            for (int j = -volumeHalfWidthY; j <= volumeHalfWidthY; j++) {
+                for (int k = -volumeHalfWidthZ; k <= volumeHalfWidthZ; k++) {
+                    float pressure = 0f;
+
+                    offset.set(-i * voxelsize, -j * voxelsize, -k * voxelsize, 1f);
+                                        
+                    Matrix4f.transform(pfoMat, new Vector4f(offset), offset);
+                    
+                    //TODO: seems fishy. check coord system and xfrm
+//                    offset.z = -offset.z;
+                    offset.x = -offset.x;
+                    
+                    offset.x += steering.x;
+                    offset.y += steering.y;
+                    offset.z += steering.z;
+//                                        
+//                        pressure = calcSamplePressure(new Vector3f(0, 0, 0), offset);
+                        pressure = calcSamplePressure(offset);
+    //                    pressure = Math.abs(pressure);
+    //                    pressure *= pressure;
+                        pressureData += pressure + ",";
+                        pressureSize++;
+                    
+
+                    if (pressure > colormap_max) {
+                        colormap_max = pressure;
+                    }
+                    if (pressure < colormap_min) {
+                        colormap_min = pressure;
+                    }
+
+                    voxels[(i + volumeHalfWidthX) + (j + volumeHalfWidthY) * volumeWidthX + (k + volumeHalfWidthZ) * volumeWidthX * volumeWidthY] = pressure;
+                    
+                }
+            }
+        }
+        
+        voxels_org = voxels;   // duplicate the voxels to reserve the original voxel data 
+        
+        if (showPressureEnvelope) {
+            //// Hilbert transform madness
+            ///////////////////////////////
+
+            double[] realRow = new double[volumeWidthX];
+            double[] imagRow = new double[volumeWidthX];
+
+            double realImage[] = new double[volumeWidthX * volumeWidthY];
+            double imagImage[] = new double[volumeWidthX * volumeWidthY];
+
+            // transform rows
+            for (int y = 0; y < volumeWidthY; y++) {
+                for (int x = 0; x < volumeWidthX; x++) {
+                    realRow[x] = voxels[y * volumeWidthX + x];
+                    imagRow[x] = 0.0;
+                }
+                FastFourierTransform.transform(realRow, imagRow);
+                for (int x = 0; x < volumeWidthX; x++) {
+                    realImage[y * volumeWidthX + x] = realRow[x];
+                    imagImage[y * volumeWidthX + x] = imagRow[x];
+                }
+            }
+
+            double[] realCol = new double[volumeWidthY];
+            double[] imagCol = new double[volumeWidthY];
+
+            // transform cols
+            for (int x = 0; x < volumeWidthX; x++) {
+                for (int y = 0; y < volumeWidthY; y++) {
+                    realCol[y] = realImage[y * volumeWidthX + x];
+                    imagCol[y] = imagImage[y * volumeWidthX + x];
+                }
+                FastFourierTransform.transform(realCol, imagCol);
+                for (int y = 0; y < volumeWidthY; y++) {
+                    realImage[y * volumeWidthX + x] = realCol[y];
+                    imagImage[y * volumeWidthX + x] = imagCol[y];
+                }
+            }
+
+            // hilbert transform (really Analytic Signal mask)
+            // Assumes width and height are odd valued for now
+            for (int x = 0; x < volumeWidthX; x++) {
+                for (int y = 0; y < volumeWidthY; y++) {
+
+                    int index = y * volumeWidthX + x;
+
+                    // Mask values
+                    double real_coeff = 0.0;
+                    double imag_coeff = 0.0;
+
+// //Best result so far with spectrum truncation
+//                if (x==0 && y==0) {
+//                    real_coeff = 1.0;
+//                }
+//                else if (x<(volumeWidthX+1)/2 && y<(volumeWidthY+1)/2) {
+//                    real_coeff = 2.0;
+//                }
+//                else if (x>=(volumeWidthX+1)/2 && y<(volumeWidthY+1)/2) {
+//                    real_coeff = 2.0;
+//                }
+                    // spiral signum operator
+                    //
+                    // Larkin, Bone, Oldfield, "Natural demodulation of two-dimension fringe
+                    // patterns. I. General background of the spiral phase quadrature transform",
+                    // J. Opt. Soc. Am. A/Vol. 18 No. 8/August 2001.
+                    //
+                    double dx = x < (volumeWidthX + 1) / 2 ? x : x - volumeWidthX;
+                    double dy = y < (volumeWidthY + 1) / 2 ? y : y - volumeWidthY;
+                    double smag = Math.sqrt(dx * dx + dy * dy);
+
+                    if (x == 0 && y == 0) {
+                        real_coeff = 0;
+                        imag_coeff = 0;
+                    } else {
+                        real_coeff = dx / smag;
+                        imag_coeff = dy / smag;
+                    }
+
+                    // FFT values
+                    double r = realImage[index];
+                    double i = imagImage[index];
+
+                    // complex multiply mask value with FFT value
+                    realImage[index] = (real_coeff * r - imag_coeff * i);
+                    imagImage[index] = (real_coeff * i + imag_coeff * r);
+                }
+            }
+
+            // inv transform rows
+            for (int y = 0; y < volumeWidthY; y++) {
+                for (int x = 0; x < volumeWidthX; x++) {
+                    realRow[x] = realImage[y * volumeWidthX + x];
+                    imagRow[x] = imagImage[y * volumeWidthX + x];
+                }
+                FastFourierTransform.inverseTransform(realRow, imagRow);
+                for (int x = 0; x < volumeWidthX; x++) {
+                    realImage[y * volumeWidthX + x] = realRow[x] / volumeWidthX;
+                    imagImage[y * volumeWidthX + x] = imagRow[x] / volumeWidthX;
+                }
+            }
+
+            // inv transform cols
+            for (int x = 0; x < volumeWidthX; x++) {
+                for (int y = 0; y < volumeWidthY; y++) {
+                    realCol[y] = realImage[y * volumeWidthX + x];
+                    imagCol[y] = imagImage[y * volumeWidthX + x];
+                }
+                FastFourierTransform.inverseTransform(realCol, imagCol);
+                for (int y = 0; y < volumeWidthY; y++) {
+                    realImage[y * volumeWidthX + x] = realCol[y] / volumeWidthY;
+                    imagImage[y * volumeWidthX + x] = imagCol[y] / volumeWidthY;
+                }
+            }
+
+            this.colormap_min = Float.MAX_VALUE;
+            this.colormap_max = -Float.MAX_VALUE;
+
+            for (int x = 0; x < volumeWidthX; x++) {
+                for (int y = 0; y < volumeWidthY; y++) {
+                    int index = y * volumeWidthX + x;
+
+                    double realVal = realImage[index];
+                    double imagVal = imagImage[index];
+
+                    double sigval = voxels[index];
+
+//                 float mag = (float)Math.sqrt(sigval*sigval + hilbertval*hilbertval);
+                    float mag = (float) Math.abs(sigval) + (float) Math.sqrt(realVal * realVal + imagVal * imagVal);
+//                 float mag = (float)hilbertval;
+//mag = (float)(sigval);
+
+                    if (mag > colormap_max) {
+                        colormap_max = mag;
+                    } else if (mag < colormap_min) {
+                        colormap_min = mag;
+                    }
+//                else {
+//                    System.out.println("Bad mag = " + mag);
+//                }
+
+                    voxels[index] = mag;
+                }
+            }
+
+            ///////////////////////////////
+            //
+        }
+        
+        // normalize the pressure field
+        float colormap_range = (colormap_max - colormap_min);// / 500000f;
+System.out.println("pressure maximum = " + colormap_range);
+colormap_range = 45f;
+        for (int index=0; index<voxels.length; index++) {
+
+                    float value = voxels[index];
+                    voxels[index] = (value - colormap_min) / colormap_range;
+        }
+       
+        System.out.println("Pressure max = " + colormap_max + ", min = " + colormap_min);
+        String popmsg = "Pressure calculation called";
+    
+//        JFrame f = new JFrame();
+//        JOptionPane.showMessageDialog(f, popmsg);
+
+        System.out.println("pressureData" + pressureData.substring(0, pressureData.length()  ));
+        String sequence = "index";
+        String fileName = "G:\\PressureFolder\\" + sequence + ".csv";
+        try {
+            BufferedWriter fw = new BufferedWriter(new FileWriter(fileName, true));
+            fw.write(pressureData);
+            fw.flush();
+            fw.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+    }
+    
+    
     public void calcPressureEnvelope(Quaternion pressureFieldOrientation) {
         
         if (CTimage == null) return;
@@ -1700,6 +2005,7 @@ public class TransducerRayTracer extends Renderable implements Pickable {
         Matrix4f pfoMat = Trackball.toMatrix4f(tmpq.negate(null));
         
                 
+        float[] voxels_org = (float[])envelopeImage.getData();
         float[] voxels = (float[])envelopeImage.getData();
         
         this.colormap_min = Float.MAX_VALUE;
@@ -1748,6 +2054,8 @@ public class TransducerRayTracer extends Renderable implements Pickable {
                 }
             }
         }
+        
+        voxels_org = voxels;   // duplicate the voxels to reserve the original voxel data 
         
         if (showPressureEnvelope) {
             //// Hilbert transform madness
