@@ -1652,6 +1652,7 @@ public class TransducerRayTracer extends Renderable implements Pickable {
     }
     
     
+    
     public void calcPressureEnvelopeAcoustic(Quaternion pressureFieldOrientation) {
             
     // This method is a copy of method calcPressureEnvelope
@@ -1929,23 +1930,23 @@ colormap_range = 45f;
         }
        
         System.out.println("Pressure max = " + colormap_max + ", min = " + colormap_min);
-        String popmsg = "Pressure calculation called";
-    
-//        JFrame f = new JFrame();
-//        JOptionPane.showMessageDialog(f, popmsg);
-
         System.out.println("pressureData" + pressureData.substring(0, pressureData.length()  ));
-        String sequence = "index";
-        String fileName = "G:\\PressureFolder\\" + sequence + ".csv";
+    
+    }
+    
+    
+    
+    public void savePressureDataToCSV(String fileNameFinal){       
+       
         try {
-            BufferedWriter fw = new BufferedWriter(new FileWriter(fileName, true));
+            BufferedWriter fw = new BufferedWriter(new FileWriter(fileNameFinal, true));
             fw.write(pressureData);
             fw.flush();
             fw.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+       
     }
     
     

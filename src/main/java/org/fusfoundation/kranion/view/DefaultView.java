@@ -148,6 +148,7 @@ import org.fusfoundation.kranion.plugin.Plugin;
 import org.knowm.xchart.XYSeries;
 
 
+import java.util.concurrent.TimeUnit;
 
 
 public class DefaultView extends View {
@@ -951,11 +952,97 @@ public class DefaultView extends View {
 
         
         
-        // CJ: add pressure file save button
-        Button pressureFileSave = new Button(Button.ButtonType.BUTTON, 200, 225, 150, 25, this);
+        // CJedit  vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+        
+        Button pressureFileSave = new Button(Button.ButtonType.BUTTON, 650, 180, 150, 25, this);
         pressureFileSave.setTitle("Save Pressure file");
         pressureFileSave.setCommand("pressureFileSave");
         flyout2.addChild("Acoustics", pressureFileSave);
+        
+        textbox = (TextBox)new TextBox(550, 180, 50, 25, "", controller).setTitle("+X shift steps").setCommand("XaxisShiftPlus");
+        textbox.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
+        textbox.setTextEditable(true);
+        textbox.setIsNumeric(true);
+        textbox.setTag("tbXAxisShiftPlus");
+        model.addObserver(textbox);
+        flyout2.addChild("Acoustics",textbox);
+        
+        textbox = (TextBox)new TextBox(370, 180, 50, 25, "", controller).setTitle("-X shift steps").setCommand("XaxisShiftMinus");
+        textbox.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
+        textbox.setTextEditable(true);
+        textbox.setIsNumeric(true);
+        textbox.setTag("tbXAxisShiftMinus");
+        model.addObserver(textbox);
+        flyout2.addChild("Acoustics",textbox);
+
+        textbox = (TextBox)new TextBox(200, 180, 50, 25, "", controller).setTitle("X shift increment").setCommand("XshiftIncrement");
+        textbox.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
+        textbox.setTextEditable(true);
+        textbox.setIsNumeric(true);
+        textbox.setTag("tbXshiftIncrement");
+        model.addObserver(textbox);
+        flyout2.addChild("Acoustics",textbox);
+        
+        textbox = (TextBox)new TextBox(550, 150, 50, 25, "", controller).setTitle("+Y shift steps").setCommand("YaxisShiftPlus");
+        textbox.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
+        textbox.setTextEditable(true);
+        textbox.setIsNumeric(true);
+        textbox.setTag("tbYAxisShiftPlus");
+        model.addObserver(textbox);
+        flyout2.addChild("Acoustics",textbox);
+        
+        textbox = (TextBox)new TextBox(370, 150, 50, 25, "", controller).setTitle("-Y shift steps").setCommand("YaxisShiftMinus");
+        textbox.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
+        textbox.setTextEditable(true);
+        textbox.setIsNumeric(true);
+        textbox.setTag("tbYAxisShiftMinus");
+        model.addObserver(textbox);
+        flyout2.addChild("Acoustics",textbox);
+           
+        textbox = (TextBox)new TextBox(200, 150, 50, 25, "", controller).setTitle("Y shift increment").setCommand("YshiftIncrement");
+        textbox.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
+        textbox.setTextEditable(true);
+        textbox.setIsNumeric(true);
+        textbox.setTag("tbYshiftIncrement");
+        model.addObserver(textbox);
+        flyout2.addChild("Acoustics",textbox);                
+        
+        textbox = (TextBox)new TextBox(550, 120, 50, 25, "", controller).setTitle("+Z shift steps").setCommand("ZaxisShiftPlus");
+        textbox.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
+        textbox.setTextEditable(true);
+        textbox.setIsNumeric(true);
+        textbox.setTag("tbZAxisShiftPlus");
+        model.addObserver(textbox);
+        flyout2.addChild("Acoustics",textbox);
+        
+        textbox = (TextBox)new TextBox(370, 120, 50, 25, "", controller).setTitle("-Z shift steps").setCommand("ZaxisShiftMinus");
+        textbox.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
+        textbox.setTextEditable(true);
+        textbox.setIsNumeric(true);
+        textbox.setTag("tbZAxisShiftMinus");
+        model.addObserver(textbox);
+        flyout2.addChild("Acoustics",textbox);
+
+        textbox = (TextBox)new TextBox(200, 120, 50, 25, "", controller).setTitle("Z shift increment").setCommand("ZshiftIncrement");
+        textbox.setPropertyPrefix("Model.Attribute"); // model will report propery updates with this prefix
+        textbox.setTextEditable(true);
+        textbox.setIsNumeric(true);
+        textbox.setTag("tbZshiftIncrement");
+        model.addObserver(textbox);
+        flyout2.addChild("Acoustics",textbox); 
+        
+        Button shiftAndFocus = new Button(Button.ButtonType.BUTTON, 100, 80, 120, 25, this);
+        shiftAndFocus.setTitle("Shift and Focus");
+        shiftAndFocus.setCommand("shiftAndFocus");
+        flyout2.addChild("Acoustics", shiftAndFocus);
+        
+        Button shiftBackOrgPosition = new Button(Button.ButtonType.BUTTON, 240, 80, 180, 25, this);
+        shiftBackOrgPosition.setTitle("Shiftback to Start Point");
+        shiftBackOrgPosition.setCommand("shiftBackOrgPosition");
+        flyout2.addChild("Acoustics", shiftBackOrgPosition);      
+        
+        // CJedit  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        
         
 //        // Model for Insightec "top hat" hydrophone skull mount
 //        ////////////
@@ -4468,8 +4555,9 @@ public class DefaultView extends View {
         canvas.setShowPressure(true);  
         transRayTracer.setShowPressureEnvelope(true);   // true: hilbert transformed pressure envelop, false: raw pumpy pressure pattern
 
-	transRayTracer.calcPressureEnvelopeAcoustic(new Quaternion(this.trackball.getCurrent()));
-        
+        Quaternion CurrentCordi = new Quaternion(this.trackball.getCurrent());
+	transRayTracer.calcPressureEnvelopeAcoustic(CurrentCordi);
+
 	canvas.setOverlayImage(transRayTracer.getEnvelopeImage());
 
 	canvas1.setOverlayImage(null);
@@ -4479,6 +4567,175 @@ public class DefaultView extends View {
 	pressureCalcNeedsUpdate = false;
      
         System.out.println("pressure button pressed");
+    }
+    
+    private void calShiftAndFocus(){
+             
+        // update the pressure and save to a file
+        transRayTracer.setShowEnvelope(false); // TODO: this is probably overtaken by events now. remove?
+        canvas.setShowPressure(true);  
+        transRayTracer.setShowPressureEnvelope(true);   // true: hilbert transformed pressure envelop, false: raw pumpy pressure pattern
+
+        
+        float shiftDistX = 0f;
+        float shiftDistY = 0f;    
+        float shiftDistZ = 0f;
+        
+        int tmpShiftX = 0;
+        int tmpShiftY = 0;    
+        int tmpShiftZ = 0;
+        
+        initShiftMRCT();  // put the image volume to zeroing position ! important to place here
+        
+        Quaternion CurrentCordi = new Quaternion(this.trackball.getCurrent());
+        transRayTracer.calcPressureEnvelopeAcoustic(CurrentCordi); // calculate the pressure
+        canvas.setOverlayImage(transRayTracer.getEnvelopeImage());            
+        canvas1.setOverlayImage(null);
+        canvas2.setOverlayImage(null);
+        canvas3.setOverlayImage(null);
+        
+        for (int k = -(int)parseTextBoxFloat("tbZAxisShiftMinus"); k <= (int)parseTextBoxFloat("tbZAxisShiftPlus"); k++) {
+            for (int i = -(int)parseTextBoxFloat("tbXAxisShiftMinus"); i <= (int)parseTextBoxFloat("tbXAxisShiftPlus"); i++) {
+                for (int j = -(int)parseTextBoxFloat("tbYAxisShiftMinus"); j <= (int)parseTextBoxFloat("tbYAxisShiftPlus"); j++) {
+               
+                    System.out.format("shift i: %d%n",i);
+                    System.out.format("shift j: %d%n",j);
+                    System.out.format("shift k: %d%n",k);
+
+                    // calculate shift dist by comparing with previous loc
+                    shiftDistX = parseTextBoxFloat("tbXshiftIncrement")*(i-tmpShiftX);
+                    shiftDistY = parseTextBoxFloat("tbYshiftIncrement")*(j-tmpShiftY);    
+                    shiftDistZ = parseTextBoxFloat("tbZshiftIncrement")*(k-tmpShiftZ);
+        
+                    // shift the CT image volume
+                    shiftMRCT(1, shiftDistX );   // shift the CT and MR image volume; shiftMRCT(axis number[1->x 2->y 3->z], increment [pixel])                  
+                    shiftMRCT(2, shiftDistY ); 
+                    shiftMRCT(3, shiftDistZ ); 
+
+//                    System.out.format("X shift: %f%n", parseTextBoxFloat("tbXshiftIncrement")*(i-tmpShiftX));
+//                    System.out.format("Y shift: %f%n", parseTextBoxFloat("tbYshiftIncrement")*(j-tmpShiftY));
+//                    System.out.format("Z shift: %f%n", parseTextBoxFloat("tbZshiftIncrement")*(k-tmpShiftZ));
+                         
+                    // to reuse the previous shift coordi
+                    tmpShiftX =  i;
+                    tmpShiftY =  j;        
+                    tmpShiftZ =  k;
+                    
+                    // collect the position and calculate the pressure 
+                    CurrentCordi = new Quaternion(this.trackball.getCurrent());
+                    transRayTracer.calcPressureEnvelopeAcoustic(CurrentCordi); // calculate the pressure
+                    canvas.setOverlayImage(transRayTracer.getEnvelopeImage());            
+                    canvas1.setOverlayImage(null);
+                    canvas2.setOverlayImage(null);
+                    canvas3.setOverlayImage(null);
+                                        
+                    try {
+                        TimeUnit.SECONDS.sleep((long)2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(DefaultView.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                                        
+                    String fn_Xaxis = "Pressure_on_X"+ String.format("%.2f",parseTextBoxFloat("tbXshiftIncrement")*i);
+                    String fn_Yaxis = "_Y"+ String.format("%.2f",parseTextBoxFloat("tbYshiftIncrement")*j);
+                    String fn_Zaxis = "_Z"+ String.format("%.2f",parseTextBoxFloat("tbZshiftIncrement")*k);
+                    
+                    String fileNameFinal = "G:\\PressureFolder\\" + fn_Xaxis + fn_Yaxis + fn_Zaxis + ".csv";
+                    transRayTracer.savePressureDataToCSV(fileNameFinal); // save CSV file;
+                        
+               }
+           }
+       }
+
+//        // return to orgitin position for method 2
+//        shiftMRCT(1, -parseTextBoxFloat("tbXshiftIncrement")*tmpShiftX);   // shift the CT and MR image volume; shiftMRCT(axis number[1->x 2->y 3->z], increment [pixel])                  
+//        shiftMRCT(2, -parseTextBoxFloat("tbYshiftIncrement")*tmpShiftY); 
+//        shiftMRCT(3, -parseTextBoxFloat("tbZshiftIncrement")*tmpShiftZ); 
+//        
+
+        initShiftMRCT(); // put the image volume to zeroing position  ! important to place here
+        
+        CurrentCordi = new Quaternion(this.trackball.getCurrent());
+        transRayTracer.calcPressureEnvelopeAcoustic(CurrentCordi); // calculate the pressure
+        canvas.setOverlayImage(transRayTracer.getEnvelopeImage());            
+        canvas1.setOverlayImage(null);
+        canvas2.setOverlayImage(null);
+        canvas3.setOverlayImage(null);
+                    
+        pressureCalcNeedsUpdate = false;
+                    
+    }
+    
+    
+    private void initShiftMRCT(){
+                
+        ImageVolume ctimage = model.getCtImage();
+        ImageVolume mrimage = model.getMrImage(0);
+        
+        Vector3f transCT = new Vector3f();
+        Vector3f transMR = new Vector3f();
+        transCT.x = transCT.y = transCT.z =0f;
+        transMR.x = transMR.y = transMR.z =0f;
+        
+        if (ctimage != null) {
+            model.getCtImage().setAttribute("ImageTranslation", transCT);
+        }
+
+        if (mrimage != null) {
+            model.getMrImage(0).setAttribute("ImageTranslation", transMR);
+         }
+            
+        Main.update(); // TODO: kind of a hack to make sure the raytracer is active and initialized, forces one rendered frame
+        setIsDirty(true);
+            
+    }
+            
+    private void shiftMRCT(int AxisNumb, float shiftValue){
+        try{
+            ImageVolume ctimage = model.getCtImage();
+            ImageVolume mrimage = model.getMrImage(0);
+            
+            Vector3f transCT = new Vector3f();
+            if (ctimage != null) {
+                transCT = (Vector3f)ctimage.getAttribute("ImageTranslation");
+            }
+            Vector3f transMR = new Vector3f();
+            if (mrimage != null) {
+                transMR = (Vector3f)mrimage.getAttribute("ImageTranslation");
+            }
+
+            if (AxisNumb == 1){
+                transCT.x += shiftValue;
+                transMR.x += shiftValue;
+            }else if(AxisNumb ==2){
+                transCT.y += shiftValue;
+                transMR.y += shiftValue;
+            }else if(AxisNumb ==3){
+                transCT.z += shiftValue;
+                transMR.z += shiftValue;
+            }
+
+            if (ctimage != null) {
+//                ctimage.setAttribute("ImageTranslation", transCT);
+                model.getCtImage().setAttribute("ImageTranslation", transCT);
+            }
+           
+            if (mrimage != null) {
+//                mrimage.setAttribute("ImageTranslation", transMR);
+                model.getMrImage(0).setAttribute("ImageTranslation", transMR);
+             }
+                             
+//            System.out.println(" "); 
+//            System.out.println("** CT: X axis: " + transCT.x + ",Y axis: " + transCT.y + ", Z axis: " +transCT.z);
+//            System.out.println("** MR: X axis: " + transMR.x + ",Y axis: " + transMR.y + ", Z axis: " +transMR.z);
+//            System.out.println(" ");
+            
+
+            Main.update(); // TODO: kind of a hack to make sure the raytracer is active and initialized, forces one rendered frame
+            setIsDirty(true);
+            
+        }catch(Exception ei) {
+            ei.printStackTrace();
+        }
     }
  
     private float processAxisInput(net.java.games.input.Controller c, net.java.games.input.Component.Identifier id) {
@@ -4930,14 +5187,31 @@ public class DefaultView extends View {
             
                
             // CJ : performed in action performed method
-            case "pressureFileSave":
-                
+            case "pressureFileSave":  // save the pressure data on current locaiton                 
+                System.out.println("pressureFileSave was pushed -> from action performed");     
                 pressureCalcNeedsUpdate = true;
                 pressureCalCalledByButton();        
-                                    
-                System.out.println("pressureFileSave was pushed- from action performed");
                 break;
                 
+                
+            case "shiftAndFocus":   // shift the skull and focus the beam then save the pressrue file
+                System.out.println("shiftAndFocus -> from action performed");     
+               
+                // collect the input shifting values
+                pressureCalcNeedsUpdate = true;               
+//                System.out.format("X axis shift + : %f , ",parseTextBoxFloat("tbXAxisShiftPlus"));
+//                System.out.format("X axis shift - : %f%n",parseTextBoxFloat("tbXAxisShiftMinus")); 
+                
+                calShiftAndFocus();
+
+                
+            case "shiftBackOrgPosition":  // return to the original position
+                
+                
+                break;           
+                
+                
+         
             case "currentOverlayFrame":
                 Integer sonicationIndex = (Integer) model.getAttribute("currentSonication");
                 if (sonicationIndex == null) {
